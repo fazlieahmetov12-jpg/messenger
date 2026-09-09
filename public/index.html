@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swift Messenger</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+
+:root {
+  --bg: #e7ebf0;
+  --sidebar: #ffffff;
+  --chat-bg: #e7ebf0;
+  --bubble-in: #ffffff;
+  --bubble-out: #eeffde;
+  --text: #000000;
+  --input-bg: #f2f3f5;
+  --hover: #f2f3f5;
+  --border: #d5d9de;
+  --accent: #5eb5f7;
+}
+
+body.dark {
+  --bg: #0e1621;
+  --sidebar: #17212b;
+  --chat-bg: #0e1621;
+  --bubble-in: #182533;
+  --bubble-out: #2b5278;
+  --text: #ffffff;
+  --input-bg: #17212b;
+  --hover: #202b36;
+  --border: #0e1621;
+}
+
+body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: all 0.3s; }
+
+/* ===== ЛОГИН ===== */
+.login-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 1000;
+  transition: all 0.3s;
+}
+.login-container {
+  background: var(--sidebar); border-radius: 20px; padding: 30px; width: 90%; max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2); transition: all 0.3s;
+}
+.login-logo { text-align: center; margin-bottom: 20px; }
+.login-logo-icon {
+  width: 70px; height: 70px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #a777e3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 35px; margin: 0 auto 12px; color: white;
+}
+.login-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.login-subtitle { font-size: 13px; opacity: 0.7; }
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.login-input {
+  width: 100%; padding: 11px 14px; border-radius: 10px; border: 2px solid var(--border);
+  font-size: 14px; outline: none; background: var(--input-bg); color: var(--text);
+  transition: all 0.3s;
+}
+.login-btn {
+  padding: 12px; border-radius: 10px; border: none; background: var(--accent);
+  color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.register-link { text-align: center; margin-top: 12px; color: var(--accent); cursor: pointer; font-size: 13px; }
+
+/* ===== ОСНОВНОЙ ИНТЕРФЕЙС ===== */
+.app { display: flex; height: 100vh; }
+
+/* ===== САЙДБАР ===== */
+.sidebar {
+  width: 340px; min-width: 340px; background: var(--sidebar); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; transition: all 0.3s;
+}
+.sidebar-header {
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); transition: all 0.3s;
+}
+.menu-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 6px 8px; border-radius: 50%; color: var(--text); }
+.menu-btn:hover { background: var(--hover); }
+.search-bar { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.search-input {
+  width: 100%; padding: 9px 14px; border-radius: 20px; border: none;
+  background: var(--input-bg); color: var(--text); font-size: 14px; outline: none;
+}
+.chat-list { flex: 1; overflow-y: auto; padding: 8px; }
+.chat-item {
+  display: flex; align-items: center; padding: 10px 12px; border-radius: 12px;
+  cursor: pointer; gap: 12px; transition: background 0.2s;
+}
+.chat-item:hover { background: var(--hover); }
+.chat-item.active { background: var(--accent); color: white; }
+.avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #a777e3);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: bold; font-size: 18px; flex-shrink: 0;
+}
+.chat-info { flex: 1; min-width: 0; }
+.chat-name { font-weight: 600; font-size: 15px; }
+.chat-preview { font-size: 13px; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ===== ЧАТ ===== */
+.chat-area { flex: 1; display: flex; flex-direction: column; background: var(--chat-bg); transition: all 0.3s; }
+.chat-header {
+  padding: 12px 20px; background: var(--sidebar); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; transition: all 0.3s;
+}
+.chat-title { font-weight: 600; font-size: 16px; }
+.chat-subtitle { font-size: 12px; opacity: 0.7; }
+.messages-container {
+  flex: 1; overflow-y: auto; padding: 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.message {
+  max-width: 70%; padding: 8px 14px; border-radius: 16px;
+  font-size: 14px; line-height: 1.4; word-wrap: break-word;
+}
+.message.incoming { background: var(--bubble-in); align-self: flex-start; }
+.message.outgoing { background: var(--bubble-out); align-self: flex-end; }
+.message-sender { font-size: 12px; font-weight: 600; margin-bottom: 4px; opacity: 0.8; }
+.message-time { font-size: 10px; opacity: 0.6; margin-top: 4px; text-align: right; }
+.message-file { display: flex; align-items: center; gap: 8px; }
+.message-file a { color: inherit; text-decoration: none; }
+.input-area {
+  padding: 12px 20px; background: var(--sidebar); border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; transition: all 0.3s;
+}
+.attach-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text); }
+.message-input {
+  flex: 1; padding: 10px 16px; border-radius: 20px; border: none;
+  background: var(--input-bg); color: var(--text); font-size: 14px; outline: none;
+}
+.send-btn {
+  background: var(--accent); border: none; width: 42px; height: 42px;
+  border-radius: 50%; cursor: pointer; color: white; font-size: 18px;
+}
+
+/* ===== ЗВОНКИ ===== */
+.call-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.9); z-index: 200;
+  display: none; align-items: center; justify-content: center;
+}
+.call-overlay.active { display: flex; }
+.call-container {
+  text-align: center; color: white; width: 90%; max-width: 500px;
+}
+.call-avatar {
+  width: 100px; height: 100px; border-radius: 50%;
+  background: linear-gradient(135deg, #5eb5f7, #a777e3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; margin: 0 auto 20px;
+}
+.call-name { font-size: 24px; font-weight: 600; }
+.call-status { font-size: 16px; opacity: 0.8; margin-top: 8px; }
+.call-timer { font-size: 20px; margin-top: 12px; font-weight: 600; }
+.call-video-container {
+  position: relative; width: 100%; max-width: 500px; margin: 20px auto;
+  border-radius: 12px; overflow: hidden; background: #1a1a1a;
+}
+.call-video-container video {
+  width: 100%; height: 300px; object-fit: cover; display: block;
+}
+.call-video-container .local-video {
+  position: absolute; bottom: 12px; right: 12px; width: 120px; height: 90px;
+  border-radius: 8px; object-fit: cover; border: 2px solid white;
+}
+.call-controls {
+  display: flex; gap: 16px; justify-content: center; margin-top: 24px;
+}
+.call-btn {
+  width: 56px; height: 56px; border-radius: 50%; border: none;
+  cursor: pointer; font-size: 24px; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.call-btn:hover { transform: scale(1.1); }
+.call-btn.end { background: #ff4444; }
+.call-btn.mute { background: #555; }
+.call-btn.video { background: #555; }
+.call-btn.speaker { background: #555; }
+.call-btn.active { background: #5eb5f7; }
+
+/* ===== НАСТРОЙКИ ===== */
+.settings-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 100;
+  display: none; align-items: center; justify-content: center;
+}
+.settings-overlay.active { display: flex; }
+.settings-modal {
+  background: var(--sidebar); border-radius: 16px; width: 90%; max-width: 420px;
+  max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transition: all 0.3s;
+}
+.settings-header {
+  padding: 16px 20px; text-align: center; font-size: 18px; font-weight: 600;
+  border-bottom: 1px solid var(--border); position: sticky; top: 0;
+  background: var(--sidebar); z-index: 2;
+}
+.settings-close {
+  position: absolute; right: 16px; top: 14px; background: none; border: none;
+  font-size: 24px; cursor: pointer; color: var(--text);
+}
+.settings-profile {
+  padding: 20px; text-align: center; border-bottom: 8px solid var(--hover);
+}
+.settings-avatar {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #a777e3);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 32px; font-weight: bold; margin: 0 auto 12px;
+}
+.settings-name { font-size: 18px; font-weight: 600; }
+.settings-phone { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+.settings-bio { font-size: 13px; opacity: 0.6; margin-top: 8px; }
+.settings-section { border-bottom: 8px solid var(--hover); }
+.settings-section-title {
+  padding: 12px 20px 8px; font-size: 13px; opacity: 0.6;
+  text-transform: uppercase; font-weight: 500;
+}
+.settings-item {
+  display: flex; align-items: center; padding: 12px 20px; cursor: pointer;
+  transition: background 0.2s;
+}
+.settings-item:hover { background: var(--hover); }
+.settings-item-icon { font-size: 20px; margin-right: 16px; width: 24px; text-align: center; }
+.settings-item-label { flex: 1; font-size: 15px; }
+.settings-item-value { font-size: 13px; opacity: 0.6; margin-right: 8px; }
+.settings-item-arrow { font-size: 18px; opacity: 0.4; }
+.settings-toggle {
+  width: 48px; height: 28px; background: #ccc; border-radius: 14px;
+  position: relative; cursor: pointer; transition: background 0.3s; flex-shrink: 0;
+}
+.settings-toggle.active { background: var(--accent); }
+.settings-toggle-knob {
+  width: 24px; height: 24px; background: white; border-radius: 50%;
+  position: absolute; top: 2px; left: 2px; transition: transform 0.3s;
+}
+.settings-toggle.active .settings-toggle-knob { transform: translateX(20px); }
+.settings-submenu { display: none; padding: 0 20px 12px; }
+.settings-submenu.active { display: block; }
+.settings-submenu-item {
+  padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  transition: background 0.2s;
+}
+.settings-submenu-item:hover { background: var(--hover); }
+.settings-submenu-item.active { background: var(--accent); color: white; }
+.settings-input {
+  width: 100%; padding: 10px 14px; border-radius: 10px; border: 2px solid var(--border);
+  font-size: 14px; outline: none; margin-top: 8px; background: var(--input-bg); color: var(--text);
+}
+.color-options { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 0; }
+.color-option {
+  width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+  border: 3px solid transparent; transition: all 0.2s;
+}
+.color-option:hover { transform: scale(1.1); }
+.color-option.active { border-color: var(--text); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН ВХОДА -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-container">
+    <div class="login-logo">
+      <div class="login-logo-icon">💬</div>
+      <div class="login-title">Swift Messenger</div>
+      <div class="login-subtitle">Быстрый и безопасный мессенджер</div>
+    </div>
+    <div class="login-form" id="loginForm">
+      <input type="text" class="login-input" id="loginUsername" placeholder="Имя пользователя">
+      <input type="password" class="login-input" id="loginPassword" placeholder="Пароль">
+      <button class="login-btn" onclick="login()">Войти</button>
+      <div class="register-link" onclick="showRegister()">Нет аккаунта? Зарегистрироваться</div>
+    </div>
+    <div class="login-form" id="registerForm" style="display:none;">
+      <input type="text" class="login-input" id="regUsername" placeholder="Имя пользователя">
+      <input type="text" class="login-input" id="regPhone" placeholder="Номер телефона">
+      <input type="password" class="login-input" id="regPassword" placeholder="Пароль">
+      <input type="password" class="login-input" id="regConfirmPassword" placeholder="Подтвердите пароль">
+      <button class="login-btn" onclick="register()">Зарегистрироваться</button>
+      <div class="register-link" onclick="showLogin()">Уже есть аккаунт? Войти</div>
+    </div>
+  </div>
+</div>
+
+<!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+<div class="app hidden" id="mainApp">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <button class="menu-btn" onclick="openSettings()">☰</button>
+      <div style="font-weight:600;">Swift Messenger</div>
+      <button class="menu-btn" onclick="logout()">🚪</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" class="search-input" placeholder="Поиск" id="searchInput" oninput="filterChats(this.value)">
+    </div>
+    <div class="chat-list" id="chatList"></div>
+  </div>
+  <div class="chat-area">
+    <div class="chat-header">
+      <div class="avatar" id="chatAvatar" style="width:40px;height:40px;font-size:16px;">💬</div>
+      <div>
+        <div class="chat-title" id="chatTitle">Выберите чат</div>
+        <div class="chat-subtitle" id="chatSubtitle">онлайн</div>
+      </div>
+      <div style="flex:1;"></div>
+      <button class="menu-btn" onclick="startAudioCall()" title="Звонок">📞</button>
+      <button class="menu-btn" onclick="startVideoCall()" title="Видеозвонок">📹</button>
+    </div>
+    <div class="messages-container" id="messagesContainer">
+      <div style="text-align:center; opacity:0.6; margin-top:40px;">Выберите чат</div>
+    </div>
+    <div class="input-area">
+      <input type="file" id="fileInput" style="display:none;" onchange="uploadFile(this.files[0])">
+      <button class="attach-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+      <input type="text" class="message-input" id="messageInput" placeholder="Сообщение..." onkeypress="handleKeyPress(event)">
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ЗВОНОК -->
+<div class="call-overlay" id="callOverlay">
+  <div class="call-container">
+    <div class="call-avatar" id="callAvatar">📞</div>
+    <div class="call-name" id="callName">Звонок</div>
+    <div class="call-status" id="callStatus">Вызов...</div>
+    <div class="call-timer" id="callTimer" style="display:none;">00:00</div>
+    
+    <div class="call-video-container" id="videoContainer" style="display:none;">
+      <video id="remoteVideo" autoplay></video>
+      <video id="localVideo" autoplay muted class="local-video"></video>
+    </div>
+    
+    <div class="call-controls">
+      <button class="call-btn mute" id="muteBtn" onclick="toggleMute()" title="Микрофон">🎤</button>
+      <button class="call-btn video" id="videoBtn" onclick="toggleVideo()" title="Видео" style="display:none;">📹</button>
+      <button class="call-btn speaker" id="speakerBtn" onclick="toggleSpeaker()" title="Звук">🔊</button>
+      <button class="call-btn end" onclick="endCall()" title="Завершить">🔴</button>
+    </div>
+  </div>
+</div>
+
+<!-- НАСТРОЙКИ -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-modal">
+    <div class="settings-header">
+      Настройки
+      <button class="settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    
+    <div class="settings-profile">
+      <div class="settings-avatar" id="settingsAvatar">U</div>
+      <div class="settings-name" id="settingsName">Пользователь</div>
+      <div class="settings-phone" id="settingsPhone">+7 ___</div>
+      <div class="settings-bio" id="settingsBio">Привет!</div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title">Аккаунт</div>
+      <div class="settings-item" onclick="toggleSubmenu('phoneSubmenu')">
+        <span class="settings-item-icon">📱</span>
+        <span class="settings-item-label">Номер телефона</span>
+        <span class="settings-item-arrow">›</span>
+      </div>
+      <div class="settings-submenu" id="phoneSubmenu">
+        <input type="text" class="settings-input" id="phoneInput" placeholder="+7 ___">
+      </div>
+      <div class="settings-item" onclick="toggleSubmenu('usernameSubmenu')">
+        <span class="settings-item-icon">👤</span>
+        <span class="settings-item-label">Имя пользователя</span>
+        <span class="settings-item-arrow">›</span>
+      </div>
+      <div class="settings-submenu" id="usernameSubmenu">
+        <input type="text" class="settings-input" id="usernameInput" placeholder="Имя">
+      </div>
+      <div class="settings-item" onclick="toggleSubmenu('bioSubmenu')">
+        <span class="settings-item-icon">📝</span>
+        <span class="settings-item-label">О себе</span>
+        <span class="settings-item-arrow">›</span>
+      </div>
+      <div class="settings-submenu" id="bioSubmenu">
+        <input type="text" class="settings-input" id="bioInput" placeholder="О себе">
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title">Внешний вид</div>
+      <div class="settings-item" onclick="toggleSubmenu('themeSubmenu')">
+        <span class="settings-item-icon">🎨</span>
+        <span class="settings-item-label">Тема</span>
+        <span class="settings-item-value" id="themeValue">Светлая</span>
+        <span class="settings-item-arrow">›</span>
+      </div>
+      <div class="settings-submenu" id="themeSubmenu">
+        <div class="settings-submenu-item active" data-theme="light" onclick="selectTheme('light', this)">☀️ Светлая</div>
+        <div class="settings-submenu-item" data-theme="dark" onclick="selectTheme('dark', this)">🌙 Тёмная</div>
+      </div>
+      <div class="settings-item" onclick="toggleSubmenu('colorSubmenu')">
+        <span class="settings-item-icon">🌈</span>
+        <span class="settings-item-label">Цвет темы</span>
+        <span class="settings-item-arrow">›</span>
+      </div>
+      <div class="settings-submenu" id="colorSubmenu">
+        <div class="color-options">
+          <div class="color-option active" style="background:#5eb5f7;" data-color="blue" onclick="selectColor('blue', this)"></div>
+          <div class="color-option" style="background:#ff4444;" data-color="red" onclick="selectColor('red', this)"></div>
+          <div class="color-option" style="background:#44cc44;" data-color="green" onclick="selectColor('green', this)"></div>
+          <div class="color-option" style="background:#ff8800;" data-color="orange" onclick="selectColor('orange', this)"></div>
+          <div class="color-option" style="background:#9944ff;" data-color="purple" onclick="selectColor('purple', this)"></div>
+          <div class="color-option" style="background:#ff44aa;" data-color="pink" onclick="selectColor('pink', this)"></div>
+          <div class="color-option" style="background:#44cccc;" data-color="cyan" onclick="selectColor('cyan', this)"></div>
+          <div class="color-option" style="background:#cccc00;" data-color="yellow" onclick="selectColor('yellow', this)"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-section-title">Уведомления</div>
+      <div class="settings-item">
+        <span class="settings-item-icon">🔔</span>
+        <span class="settings-item-label">Уведомления</span>
+        <div class="settings-toggle active" id="notificationsToggle" onclick="toggleSetting('notifications')">
+          <div class="settings-toggle-knob"></div>
+        </div>
+      </div>
+      <div class="settings-item">
+        <span class="settings-item-icon">🔊</span>
+        <span class="settings-item-label">Звук</span>
+        <div class="settings-toggle active" id="soundToggle" onclick="toggleSetting('sound')">
+          <div class="settings-toggle-knob"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <div class="settings-item" onclick="logout()" style="justify-content:center; color:#ff4444;">
+        <span style="text-align:center;">Выйти из аккаунта</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let socket = null;
+let currentUser = null;
+let token = null;
+let chats = [];
+let messages = {};
+let currentChatId = null;
+let settings = {
+  notifications: true,
+  sound: true,
+  theme: 'light',
+  color: 'blue'
+};
+let localStream = null;
+let remoteStream = null;
+let peerConnection = null;
+let callTimer = null;
+let callSeconds = 0;
+let isMuted = false;
+let isVideoOff = false;
+let isSpeakerOn = true;
+let currentCallType = null;
+
+function init() {
+  token = localStorage.getItem('token');
+  currentUser = JSON.parse(localStorage.getItem('user'));
+  settings = JSON.parse(localStorage.getItem('settings')) || settings;
+  
+  if (token && currentUser) {
+    showMainApp();
+    connectSocket();
+    loadChats();
+    applyTheme();
+    applyColor();
+  }
+}
+
+// ===== ТЕМА =====
+function applyTheme() {
+  if (settings.theme === 'dark') {
+    document.body.classList.add('dark');
+  } else {
+    document.body.classList.remove('dark');
+  }
+}
+
+function applyColor() {
+  const colors = {
+    blue: '#5eb5f7', red: '#ff4444', green: '#44cc44',
+    orange: '#ff8800', purple: '#9944ff', pink: '#ff44aa',
+    cyan: '#44cccc', yellow: '#cccc00'
+  };
+  const color = colors[settings.color] || '#5eb5f7';
+  document.documentElement.style.setProperty('--accent', color);
+}
+
+// ===== НАСТРОЙКИ =====
+function openSettings() {
+  document.getElementById('settingsOverlay').classList.add('active');
+  updateSettingsUI();
+}
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('active');
+  saveProfileSettings();
+}
+
+function updateSettingsUI() {
+  if (!currentUser) return;
+  
+  document.getElementById('settingsAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
+  document.getElementById('settingsName').textContent = currentUser.username;
+  document.getElementById('settingsPhone').textContent = currentUser.phone || '+7 ___';
+  document.getElementById('settingsBio').textContent = currentUser.bio || 'Привет!';
+  
+  document.getElementById('phoneInput').value = currentUser.phone || '';
+  document.getElementById('usernameInput').value = currentUser.username || '';
+  document.getElementById('bioInput').value = currentUser.bio || '';
+  
+  document.getElementById('notificationsToggle').classList.toggle('active', settings.notifications);
+  document.getElementById('soundToggle').classList.toggle('active', settings.sound);
+  document.getElementById('themeValue').textContent = settings.theme === 'dark' ? 'Тёмная' : 'Светлая';
+}
+
+function toggleSubmenu(id) {
+  document.getElementById(id).classList.toggle('active');
+}
+
+function toggleSetting(name) {
+  settings[name] = !settings[name];
+  localStorage.setItem('settings', JSON.stringify(settings));
+  updateSettingsUI();
+}
+
+function selectTheme(theme, element) {
+  settings.theme = theme;
+  localStorage.setItem('settings', JSON.stringify(settings));
+  document.querySelectorAll('[data-theme]').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+  applyTheme();
+  updateSettingsUI();
+}
+
+function selectColor(color, element) {
+  settings.color = color;
+  localStorage.setItem('settings', JSON.stringify(settings));
+  document.querySelectorAll('.color-option').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+  applyColor();
+}
+
+function saveProfileSettings() {
+  if (!currentUser) return;
+  currentUser.phone = document.getElementById('phoneInput').value || currentUser.phone;
+  currentUser.username = document.getElementById('usernameInput').value || currentUser.username;
+  currentUser.bio = document.getElementById('bioInput').value || currentUser.bio;
+  localStorage.setItem('user', JSON.stringify(currentUser));
+}
+
+// ===== АУТЕНТИФИКАЦИЯ =====
+async function login() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  
+  if (!username || !password) return alert('Введите данные');
+  
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  
+  const data = await res.json();
+  if (data.error) return alert(data.error);
+  
+  token = data.token;
+  currentUser = data.user;
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(currentUser));
+  
+  showMainApp();
+  connectSocket();
+  loadChats();
+}
+
+async function register() {
+  const username = document.getElementById('regUsername').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const password = document.getElementById('regPassword').value.trim();
+  const confirm = document.getElementById('regConfirmPassword').value.trim();
+  
+  if (!username || !phone || !password) return alert('Заполните все поля');
+  if (password !== confirm) return alert('Пароли не совпадают');
+  
+  const res = await fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, phone, password })
+  });
+  
+  const data = await res.json();
+  if (data.error) return alert(data.error);
+  
+  token = data.token;
+  currentUser = data.user;
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(currentUser));
+  
+  showMainApp();
+  connectSocket();
+  loadChats();
+}
+
+function connectSocket() {
+  socket = io();
+  
+  socket.on('connect', () => {
+    socket.emit('userConnected', { userId: currentUser.id, username: currentUser.username });
+  });
+  
+  socket.on('newMessage', (msg) => {
+    if (!messages[msg.chatId]) messages[msg.chatId] = [];
+    messages[msg.chatId].push(msg);
+    if (msg.chatId === currentChatId) renderMessages();
+    renderChats();
+  });
+  
+  socket.on('userTyping', (data) => {
+    if (data.chatId === currentChatId) {
+      document.getElementById('chatSubtitle').textContent = `${data.username} печатает...`;
+    }
+  });
+  
+  socket.on('chatCreated', (chat) => {
+    chats.push(chat);
+    renderChats();
+  });
+  
+  // Звонки
+  socket.on('incomingCall', (data) => {
+    showIncomingCall(data);
+  });
+  
+  socket.on('callAccepted', () => {
+    document.getElementById('callStatus').textContent = 'Соединение...';
+    startCallTimer();
+  });
+  
+  socket.on('callRejected', () => {
+    endCall();
+    alert('Звонок отклонён');
+  });
+  
+  socket.on('callEnded', () => {
+    endCall();
+  });
+}
+
+// ===== ЗАГРУЗКА ДАННЫХ =====
+async function loadChats() {
+  const res = await fetch('/api/chats', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  chats = await res.json();
+  renderChats();
+}
+
+async function loadMessages(chatId) {
+  const res = await fetch(`/api/messages/${chatId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  messages[chatId] = await res.json();
+  renderMessages();
+}
+
+function renderChats() {
+  const list = document.getElementById('chatList');
+  list.innerHTML = '';
+  
+  chats.forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'chat-item' + (currentChatId === chat.id ? ' active' : '');
+    item.onclick = () => openChat(chat.id);
+    item.innerHTML = `
+      <div class="avatar">${chat.avatar || chat.name.charAt(0)}</div>
+      <div class="chat-info">
+        <div class="chat-name">${chat.name}</div>
+        <div class="chat-preview">Нажмите чтобы открыть</div>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function renderMessages() {
+  const container = document.getElementById('messagesContainer');
+  container.innerHTML = '';
+  
+  if (!currentChatId) return;
+  
+  const chat = chats.find(c => c.id === currentChatId);
+  if (chat) {
+    document.getElementById('chatTitle').textContent = chat.name;
+    document.getElementById('chatAvatar').textContent = chat.avatar || chat.name.charAt(0);
+  }
+  
+  const msgs = messages[currentChatId] || [];
+  
+  msgs.forEach(msg => {
+    const div = document.createElement('div');
+    div.className = 'message ' + (msg.senderId === currentUser.id ? 'outgoing' : 'incoming');
+    
+    let content = msg.text;
+    if (msg.type === 'file') {
+      content = `<div class="message-file">📎 <a href="${msg.fileUrl}" download="${msg.fileName}">${msg.fileName}</a></div>`;
+    } else if (msg.type === 'image') {
+      content = `<img src="${msg.fileUrl}" style="max-width:100%; border-radius:8px;">`;
+    }
+    
+    div.innerHTML = `
+      <div class="message-sender">${msg.sender}</div>
+      ${content}
+      <div class="message-time">${new Date(msg.createdAt).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'})}</div>
+    `;
+    container.appendChild(div);
+  });
+  
+  container.scrollTop = container.scrollHeight;
+}
+
+function openChat(chatId) {
+  currentChatId = chatId;
+  renderChats();
+  loadMessages(chatId);
+  socket.emit('joinChat', { chatId, userId: currentUser.id });
+}
+
+function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  
+  if (!text || !currentChatId || !socket) return;
+  
+  socket.emit('sendMessage', {
+    chatId: currentChatId,
+    text,
+    userId: currentUser.id,
+    username: currentUser.username,
+    type: 'text'
+  });
+  
+  input.value = '';
+}
+
+async function uploadFile(file) {
+  if (!file || !currentChatId) return;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await res.json();
+    
+    if (socket) {
+      socket.emit('sendMessage', {
+        chatId: currentChatId,
+        text: file.name,
+        userId: currentUser.id,
+        username: currentUser.username,
+        type: file.type.startsWith('image/') ? 'image' : 'file',
+        fileUrl: data.url,
+        fileName: data.name,
+        fileSize: data.size
+      });
+    }
+  } catch (err) {
+    alert('Ошибка загрузки файла');
+  }
+}
+
+// ===== ЗВОНКИ =====
+async function startAudioCall() {
+  if (!currentChatId) return;
+  currentCallType = 'audio';
+  
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    showCallUI('audio');
+    
+    socket.emit('callUser', {
+      targetUserId: getTargetUserId(),
+      from: currentUser.username,
+      fromUserId: currentUser.id,
+      callType: 'audio'
+    });
+  } catch (err) {
+    alert('Ошибка доступа к микрофону');
+  }
+}
+
+async function startVideoCall() {
+  if (!currentChatId) return;
+  currentCallType = 'video';
+  
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    showCallUI('video');
+    
+    document.getElementById('videoContainer').style.display = 'block';
+    document.getElementById('localVideo').srcObject = localStream;
+    document.getElementById('videoBtn').style.display = 'flex';
+    
+    socket.emit('callUser', {
+      targetUserId: getTargetUserId(),
+      from: currentUser.username,
+      fromUserId: currentUser.id,
+      callType: 'video'
+    });
+  } catch (err) {
+    alert('Ошибка доступа к камере/микрофону');
+  }
+}
+
+function showIncomingCall(data) {
+  currentCallType = data.callType;
+  
+  document.getElementById('callOverlay').classList.add('active');
+  document.getElementById('callAvatar').textContent = data.from.charAt(0).toUpperCase();
+  document.getElementById('callName').textContent = data.from;
+  document.getElementById('callStatus').textContent = 
+    data.callType === 'video' ? 'Видеозвонок...' : 'Звонок...';
+  
+  if (data.callType === 'video') {
+    document.getElementById('videoBtn').style.display = 'flex';
+  }
+}
+
+function showCallUI(type) {
+  document.getElementById('callOverlay').classList.add('active');
+  document.getElementById('callAvatar').textContent = '📞';
+  document.getElementById('callName').textContent = 'Звонок';
+  document.getElementById('callStatus').textContent = 'Вызов...';
+}
+
+function getTargetUserId() {
+  const chat = chats.find(c => c.id === currentChatId);
+  if (chat && chat.members) {
+    const target = chat.members.find(m => m !== currentUser.username);
+    return target || '';
+  }
+  return '';
+}
+
+function toggleMute() {
+  if (localStream) {
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
+    document.getElementById('muteBtn').classList.toggle('active', isMuted);
+    document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🎤';
+  }
+}
+
+function toggleVideo() {
+  if (localStream) {
+    isVideoOff = !isVideoOff;
+    localStream.getVideoTracks().forEach(track => track.enabled = !isVideoOff);
+    document.getElementById('videoBtn').classList.toggle('active', isVideoOff);
+    document.getElementById('videoBtn').textContent = isVideoOff ? '🚫📹' : '📹';
+  }
+}
+
+function toggleSpeaker() {
+  isSpeakerOn = !isSpeakerOn;
+  document.getElementById('speakerBtn').classList.toggle('active', !isSpeakerOn);
+  document.getElementById('speakerBtn').textContent = isSpeakerOn ? '🔊' : '🔇';
+}
+
+function startCallTimer() {
+  callSeconds = 0;
+  document.getElementById('callTimer').style.display = 'block';
+  
+  callTimer = setInterval(() => {
+    callSeconds++;
+    const mins = Math.floor(callSeconds / 60).toString().padStart(2, '0');
+    const secs = (callSeconds % 60).toString().padStart(2, '0');
+    document.getElementById('callTimer').textContent = `${mins}:${secs}`;
+  }, 1000);
+}
+
+function endCall() {
+  if (callTimer) clearInterval(callTimer);
+  callSeconds = 0;
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+  }
+  
+  document.getElementById('callOverlay').classList.remove('active');
+  document.getElementById('callTimer').style.display = 'none';
+  document.getElementById('videoContainer').style.display = 'none';
+  document.getElementById('videoBtn').style.display = 'none';
+  document.getElementById('muteBtn').textContent = '🎤';
+  document.getElementById('videoBtn').textContent = '📹';
+  document.getElementById('speakerBtn').textContent = '🔊';
+  
+  if (socket) {
+    socket.emit('endCall', { targetUserId: getTargetUserId() });
+  }
+  
+  localStream = null;
+  isMuted = false;
+  isVideoOff = false;
+  isSpeakerOn = true;
+  currentCallType = null;
+}
+
+function handleKeyPress(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function filterChats(query) {
+  const filtered = chats.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
+  const list = document.getElementById('chatList');
+  list.innerHTML = '';
+  
+  filtered.forEach(chat => {
+    const item = document.createElement('div');
+    item.className = 'chat-item';
+    item.onclick = () => openChat(chat.id);
+    item.innerHTML = `
+      <div class="avatar">${chat.avatar || chat.name.charAt(0)}</div>
+      <div class="chat-info"><div class="chat-name">${chat.name}</div></div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function showMainApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').classList.remove('hidden');
+}
+
+function showLogin() {
+  document.getElementById('loginForm').style.display = 'flex';
+  document.getElementById('registerForm').style.display = 'none';
+}
+
+function showRegister() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'flex';
+}
+
+function logout() {
+  socket?.disconnect();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  location.reload();
+}
+
+document.getElementById('settingsOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+document.getElementById('callOverlay').addEventListener('click', function(e) {
+  if (e.target === this) endCall();
+});
+
+init();
+</script>
+</body>
+</html>

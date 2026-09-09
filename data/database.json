@@ -1,0 +1,128 @@
+{
+  "users": [
+    {
+      "id": "mtu4w1qv12qpqjqa9",
+      "username": "12341234",
+      "phone": "12341234",
+      "password": "$2a$10$hM5zbYHlMPqBjaCdZ2L.juxuXs6EUcMSUKbD4VhHK/aQvhEnaViOe",
+      "bio": "Привет! Я использую Swift Messenger",
+      "avatar": "1",
+      "online": true,
+      "lastSeen": "2026-09-09T13:43:27.518Z",
+      "createdAt": "2026-09-09T13:28:16.855Z"
+    }
+  ],
+  "chats": [
+    {
+      "id": "mtu4w1qvaq72xrevv",
+      "name": "Swift Bot",
+      "avatar": "🤖",
+      "type": "personal",
+      "members": [
+        "12341234"
+      ],
+      "isSystem": true,
+      "createdAt": "2026-09-09T13:28:16.855Z"
+    },
+    {
+      "id": "mtu4xmsmusmbw5hdj",
+      "name": "выаыва",
+      "avatar": "В",
+      "type": "group",
+      "members": [
+        "12341234"
+      ],
+      "createdBy": "mtu4w1qv12qpqjqa9",
+      "createdAt": "2026-09-09T13:29:30.790Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "mtu4w1qvydi01e2ql",
+      "chatId": "mtu4w1qvaq72xrevv",
+      "text": "U2FsdGVkX1/QOLCR87ULpFyOjUAsazMN/Uz05lDxDn6tByVuIZhZ6eMT//M4ctnZZOarto1JQ6QZ5wqqghpP7g==",
+      "encrypted": true,
+      "sender": "Swift Bot",
+      "senderId": "bot",
+      "type": "text",
+      "readBy": [
+        "mtu4w1qv12qpqjqa9"
+      ],
+      "createdAt": "2026-09-09T13:28:16.858Z"
+    },
+    {
+      "id": "mtu4x7eyqca2tw4ms",
+      "chatId": "mtu4w1qvaq72xrevv",
+      "text": "voice-message.webm",
+      "encrypted": false,
+      "sender": "12341234",
+      "senderId": "mtu4w1qv12qpqjqa9",
+      "type": "file",
+      "fileUrl": "/uploads/1788960550853-sr0ot2szb.webm",
+      "fileName": "voice-message.webm",
+      "fileSize": 64052,
+      "duration": 0,
+      "readBy": [
+        "mtu4w1qv12qpqjqa9"
+      ],
+      "createdAt": "2026-09-09T13:29:10.858Z"
+    },
+    {
+      "id": "mtu4xhvwnyhjn04d8",
+      "chatId": "mtu4w1qvaq72xrevv",
+      "text": "WIN_20250925_23_48_01_Pro.jpg",
+      "encrypted": false,
+      "sender": "12341234",
+      "senderId": "mtu4w1qv12qpqjqa9",
+      "type": "image",
+      "fileUrl": "/uploads/1788960564424-ilu2i9mco.jpg",
+      "fileName": "WIN_20250925_23_48_01_Pro.jpg",
+      "fileSize": 162983,
+      "duration": 0,
+      "readBy": [
+        "mtu4w1qv12qpqjqa9"
+      ],
+      "createdAt": "2026-09-09T13:29:24.428Z"
+    },
+    {
+      "id": "mtu6vgwbah8ujinqk",
+      "chatId": "mtu4xmsmusmbw5hdj",
+      "text": "U2FsdGVkX19aOOcDIVyQZCfyu4e4BoIczO8U7MWhki8=",
+      "encrypted": true,
+      "sender": "12341234",
+      "senderId": "mtu4w1qv12qpqjqa9",
+      "type": "text",
+      "readBy": [
+        "mtu4w1qv12qpqjqa9"
+      ],
+      "createdAt": "2026-09-09T14:23:49.068Z"
+    },
+    {
+      "id": "mtu6wl5m0lkj67uf6",
+      "chatId": "mtu4w1qvaq72xrevv",
+      "text": "U2FsdGVkX18HBFb7N1aw7wOuiwMef/nmEIEE1QBrxb0=",
+      "encrypted": true,
+      "sender": "12341234",
+      "senderId": "mtu4w1qv12qpqjqa9",
+      "type": "text",
+      "readBy": [
+        "mtu4w1qv12qpqjqa9"
+      ],
+      "createdAt": "2026-09-09T14:24:41.243Z"
+    },
+    {
+      "id": "mtu71ryae2ytvrgdj",
+      "chatId": "mtu4w1qvaq72xrevv",
+      "text": "U2FsdGVkX1/O8+BG/osdcbkw4kTbHFUIu1dGCvfjCOg=",
+      "encrypted": true,
+      "sender": "12341234",
+      "senderId": "mtu4w1qv12qpqjqa9",
+      "type": "text",
+      "readBy": [
+        "mtu4w1qv12qpqjqa9"
+      ],
+      "createdAt": "2026-09-09T14:28:43.331Z"
+    }
+  ],
+  "nextId": 1
+}
